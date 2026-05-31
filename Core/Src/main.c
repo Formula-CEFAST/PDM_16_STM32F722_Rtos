@@ -108,16 +108,6 @@ int main(void)
   MX_TIM8_Init();
   MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
-HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
-HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
-
-
-HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
-__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,500);
-__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,500);
-
 
 HAL_Delay(1000);
 
