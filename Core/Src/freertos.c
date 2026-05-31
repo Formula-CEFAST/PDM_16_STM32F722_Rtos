@@ -66,6 +66,13 @@ const osThreadAttr_t myTask02_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow7,
 };
+/* Definitions for servoTask */
+osThreadId_t servoTaskHandle;
+const osThreadAttr_t servoTask_attributes = {
+  .name = "servoTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -74,6 +81,7 @@ const osThreadAttr_t myTask02_attributes = {
 
 void StartDefaultTask(void *argument);
 void StartTask02(void *argument);
+void ServoTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -110,6 +118,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of myTask02 */
   myTask02Handle = osThreadNew(StartTask02, NULL, &myTask02_attributes);
 
+  /* creation of servoTask */
+  servoTaskHandle = osThreadNew(ServoTask, NULL, &servoTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -137,7 +148,6 @@ void StartDefaultTask(void *argument)
   for(;;)
   {
 	  Outputs_Update();
-	  Servos_Update();
 
 	  HAL_GPIO_WritePin(Alternator_Relay_GPIO_Port, Alternator_Relay_Pin,genericPWMDuty[7]);
     osDelay(20);
@@ -166,6 +176,29 @@ void StartTask02(void *argument)
     osDelay(100);
   }
   /* USER CODE END StartTask02 */
+}
+
+/* USER CODE BEGIN Header_ServoTask */
+/**
+* @brief Function implementing the servoTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_ServoTask */
+void ServoTask(void *argument)
+{
+  /* USER CODE BEGIN ServoTask */
+
+	Servo_InitConfig();
+  /* Infinite loop */
+  for(;;)
+  {
+
+	  Servos_Update();
+
+    osDelay(20);
+  }
+  /* USER CODE END ServoTask */
 }
 
 /* Private application code --------------------------------------------------*/

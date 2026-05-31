@@ -16,7 +16,7 @@
 
 static Servo_CfgType servoCfg[MAX_SERVOS] =
 {
-		//Servos e Mais um ai
+		//Servos 1 e 2
     {
         .canIndice = 0,
         .inicialAngle = 0,
@@ -40,6 +40,9 @@ static Servo_CfgType servoCfg[MAX_SERVOS] =
         .TIM_Channel = TIM_CHANNEL_2
 
     },
+
+
+	//Spare PWM Signals and main ESC signal output
     {
             .canIndice = 2,
             .inicialAngle = 0,
@@ -86,11 +89,14 @@ static uint32_t Servo_GetPulseForPercent(uint16_t indiceServo, uint8_t percent)
 
     /* Primeiro dois servos: coletor invertido com escala 0..42 */
     if(indiceServo < 2){
-           __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,1000*genericPWMDuty[0]);
-           __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,1000*genericPWMDuty[0]);}
 
-    /* Outros: ESC estilo 1000..2000 us */
-    return (uint32_t)(1000 + percent * 10u);
+        uint32_t scaled_42 = (percent * 42u) / 100u; // 0..42
+        //inverted pulse calculation
+        uint32_t pulse_width = servoCfg[indiceServo].maxPulse - (scaled_42 * (servoCfg[indiceServo].maxPulse- servoCfg[indiceServo].minPulse)) / 100u;
+        return pulse_width;}
+
+    // Outros: Standard output linear curve
+    return (uint32_t)(servoCfg[indiceServo].minPulse + percent * 10u);
 }
 
 /* ================================
@@ -106,12 +112,10 @@ void Servo_InitConfig(void)
         /* inicializa o duty genérico com o ângulo inicial configurado */
         genericPWMDuty[ servoCfg[i].anguloIndice ] = (uint8_t)servoCfg[i].inicialAngle;
 
-        /* aplica posição inicial
-           mantém as funções originais para compatibilidade */
+
         if(i < 2){
             servoMoveTo(i);
-        __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,1000*genericPWMDuty[0]);
-        __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,1000*genericPWMDuty[0]);}
+      }
         else
             escMoveTo(i);
     }
@@ -140,7 +144,6 @@ void servoMoveTo(uint16_t indiceServo)
 
 void escMoveTo(uint16_t indiceServo)
 {
-    /* escMoveTo mantém compatibilidade — usa mesma lógica que servoMoveTo */
     servoMoveTo(indiceServo);
 }
 

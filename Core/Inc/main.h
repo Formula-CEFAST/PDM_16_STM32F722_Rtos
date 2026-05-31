@@ -87,8 +87,8 @@ void Error_Handler(void);
 #define SEL0_GPIO_Port GPIOC
 #define AlwaysOnC11_Pin GPIO_PIN_11
 #define AlwaysOnC11_GPIO_Port GPIOC
-#define AlwaysOnC12_Pin GPIO_PIN_12
-#define AlwaysOnC12_GPIO_Port GPIOC
+#define Alternator_Relay_Pin GPIO_PIN_12
+#define Alternator_Relay_GPIO_Port GPIOC
 #define PWM_2_Pin GPIO_PIN_7
 #define PWM_2_GPIO_Port GPIOB
 #define PWM_5_Pin GPIO_PIN_8
