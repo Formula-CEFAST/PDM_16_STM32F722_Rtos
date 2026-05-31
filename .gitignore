@@ -1,0 +1,21 @@
+# Build output
+Debug/
+Release/
+
+# STM32CubeIDE generated metadata
+.settings/language.settings.xml
+
+# Temporary files
+*.o
+*.d
+*.su
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
