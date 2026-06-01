@@ -8,29 +8,20 @@
 #include "adc_manager.h"
 
 extern ADC_HandleTypeDef hadc1;
-#define K 0.0224719
+#define K0 0.0224719
+#define K1 0.0224719
+#define K2 0.0224719
+#define K3 0.0224719
+#define K4 0.0224719
 
 #define ADC_CHANNEL_COUNT    13
 
 // ===== DMA BUFFERS =====
 
-uint16_t adc12_buf[8];
-uint16_t adc34_buf[6];
-uint16_t adc4_buf[1];
-uint16_t adc5_buf[3];uint16_t adc3_buf[1];
 
 uint16_t adcBuffer[ADC_CHANNEL_COUNT];
+uint8_t muxState=0;
 
-__IO uint32_t   aADCDualConvertedValues[4];         /* ADC dual mode interleaved conversion results (ADC master and ADC slave results concatenated on data register 32 bits of ADC master). */
-__IO uint32_t   aADCDualConvertedValues2[2];         /* ADC dual mode interleaved conversion results (ADC master and ADC slave results concatenated on data register 32 bits of ADC master). */
-
-__IO uint16_t   aADCxConvertedValues[4];    /* For the purpose of this example, dispatch dual conversion values into arrays corresponding to each ADC conversion values. */
-__IO uint16_t   aADCyConvertedValues[4];    /* For the purpose of this example, dispatch dual conversion values into arrays corresponding to each ADC conversion values. */
-
-__IO uint16_t   aADCx2ConvertedValues[2];    /* For the purpose of this example, dispatch dual conversion values into arrays corresponding to each ADC conversion values. */
-__IO uint16_t   aADCy2ConvertedValues[2];    /* For the purpose of this example, dispatch dual conversion values into arrays corresponding to each ADC conversion values. */
-
-__IO uint16_t aADCSingleEndedAdc5[1];
 // ================= START ALL ADCs =================
 
 void ADC_Manager_Start()
@@ -44,6 +35,9 @@ void ADC_Manager_Start()
                       ADC_CHANNEL_COUNT);
 
     /* Start Timer Trigger */
+    HAL_TIM_Base_Start(&htim8);
+
+
 }
 
 // ================= DMA CALLBACK =================
@@ -52,6 +46,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
     // Signal ADC task when DMA completes a sequence
    // osSemaphoreRelease(adcSemHandle);
+	ADC_ProcessData(muxState);
+	SetNextMuxState();
+
 }
 
 
@@ -65,118 +62,87 @@ float ADC_RawToVoltage(uint16_t raw)
 
 // ================= ADC PROCESSING TASK =================
 
-static uint8_t getMuxState(void)
+void SetNextMuxState(void)
 {
-    // Example — adapt to your GPIO names
-	HAL_GPIO_WritePin(SEL0_GPIO_Port, SEL0_Pin, 1);
-	HAL_GPIO_WritePin(SEL1_GPIO_Port, SEL1_Pin, 0);
+    muxState = (muxState + 1) % 4;
 
-    uint8_t s0 = HAL_GPIO_ReadPin(SEL0_GPIO_Port, SEL0_Pin);
-    uint8_t s1 = HAL_GPIO_ReadPin(SEL1_GPIO_Port, SEL1_Pin);
+    switch(muxState)
+    {
+        case 0:
+            HAL_GPIO_WritePin(SEL0_GPIO_Port, SEL0_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(SEL1_GPIO_Port, SEL1_Pin, GPIO_PIN_RESET);
+            break;
 
-    return (s1 << 1) | s0;
+        case 1:
+            HAL_GPIO_WritePin(SEL0_GPIO_Port, SEL0_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(SEL1_GPIO_Port, SEL1_Pin, GPIO_PIN_RESET);
+            break;
+
+        case 2:
+            HAL_GPIO_WritePin(SEL0_GPIO_Port, SEL0_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(SEL1_GPIO_Port, SEL1_Pin, GPIO_PIN_SET);
+            break;
+
+    	case 3:
+
+    		HAL_GPIO_WritePin(SEL0_GPIO_Port, SEL0_Pin, GPIO_PIN_SET);
+    		HAL_GPIO_WritePin(SEL1_GPIO_Port, SEL1_Pin, GPIO_PIN_SET);
+    	break;
+
+    }
 }
 
-
-void ADCTask()
-{
-	for (int i = 0; i < 4; ++i) {
-	    aADCxConvertedValues[i] = aADCDualConvertedValues[i] & 0x0000FFFF;
-
-	    if (i < 3)
-	        aADCyConvertedValues[i] = aADCDualConvertedValues[i] >> 16;
-	}
-	for (int i = 0; i < 2; ++i) {
-
-		aADCx2ConvertedValues[i]=aADCDualConvertedValues2[i]&0x0000FFFF;
-		aADCy2ConvertedValues[i]=aADCDualConvertedValues2[i]>>16;
-	}
-	uint16_t teste=(aADCyConvertedValues[0]*100*K);
-	 adcData.smartswitch1_current[0]==teste;
-	 adcData.smartswitch1_current[1]==(uint16_t)(K*aADCyConvertedValues[3] * 100);
-
-	 if(flagCan<300){}//flagCan++;
-
-}
 
 
 
 //map the signals to proper variables
-	  void ADC_ProcessData()
-	  {
-		  uint8_t mux = getMuxState();
-	      float v;
+void ADC_ProcessData(uint8_t muxState)
+{
+    adcData.analogSpare3 = ADC_RawToVoltage(adcBuffer[0]);
+    adcData.analogSpare2 = ADC_RawToVoltage(adcBuffer[3]);
+    adcData.analogSpare1 = ADC_RawToVoltage(adcBuffer[2]);
+    adcData.analogSpare4 = ADC_RawToVoltage(adcBuffer[1]);
 
-	      /* ================= ADC1 ================= */
+    switch(muxState)
+    {
+        case 0:
+            adcData.smartswitch1_current[0] = adcBuffer[4];
+            adcData.smartswitch2_current[0] = adcBuffer[5];
+            adcData.smartswitch4_current[0] = adcBuffer[6];
+            adcData.smartswitch5[0]         = adcBuffer[7];
+            adcData.smartswitch6[0]         = adcBuffer[8];
+            adcData.sensorCurrent           = adcBuffer[9];
+            adcData.smartswitch3_current[0] = adcBuffer[10];
+            break;
 
-	      // smartswitch5 (4 channels via mux)
-	      v = (aADCxConvertedValues[0]);
-	      adcData.smartswitch5[mux] = v;
+        case 1:
+            adcData.smartswitch1_current[1] = adcBuffer[4];
+            adcData.smartswitch2_current[1] = adcBuffer[5];
+            adcData.smartswitch4_current[1] = adcBuffer[6];
+            adcData.smartswitch5[1]         = adcBuffer[7];
+            adcData.smartswitch6[1]         = adcBuffer[8];
+            adcData.smartswitch3_current[1] = adcBuffer[10];
+            break;
 
-	      adcData.temperature = (aADCxConvertedValues[1]);
-	      adcData.vbat        = (aADCxConvertedValues[2]);
-	      adcData.vref        = (aADCxConvertedValues[3]);
+        case 2:
+            adcData.smartswitch1_voltage = adcBuffer[4];
+            adcData.smartswitch2_voltage = adcBuffer[5];
+            adcData.smartswitch4_voltage = adcBuffer[6];
+            adcData.smartswitch5[2]      = adcBuffer[7];
+            adcData.smartswitch6[2]      = adcBuffer[8];
+            adcData.smartswitch3_voltage = adcBuffer[10];
+            break;
 
-
-	      /* ================= ADC2 ================= */
-
-	      // smartswitch1 (mux based)
-	      v = (aADCyConvertedValues[0]);
-	      switch(mux)
-	      {
-	          case 0: adcData.smartswitch1_current[0] = v; break;
-	          case 1: adcData.smartswitch1_current[1] = v; break;
-	          case 2: adcData.smartswitch1_voltage    = v; break;
-	          case 3: adcData.smartswitch1_temp       = v; break;
-	      }
-
-	      adcData.analogSpare1  = (aADCyConvertedValues[1]);
-	      adcData.sensorCurrent= (aADCyConvertedValues[2]);
-
-	      // smartswitch2 (mux based)
-	      v = (aADCyConvertedValues[3]);
-	      switch(mux)
-	      {
-	          case 0: adcData.smartswitch2_current[0] = v; break;
-	          case 1: adcData.smartswitch2_current[1] = v; break;
-	          case 2: adcData.smartswitch2_voltage    = v; break;
-	          case 3: adcData.smartswitch2_temp       = v; break;
-	      }
-
-
-	      /* ================= ADC3 ================= */
-
-	      v = (aADCx2ConvertedValues[0]);
-	      switch(mux)
-	      {
-	          case 0: adcData.smartswitch3_current[0] = v; break;
-	          case 1: adcData.smartswitch3_current[1] = v; break;
-	          case 2: adcData.smartswitch3_voltage    = v; break;
-	          case 3: adcData.smartswitch3_temp       = v; break;
-	      }
-
-
-	      /* ================= ADC4 ================= */
-
-	      // smartswitch4
-	      v = (aADCy2ConvertedValues[0]);
-	      switch(mux)
-	      {
-	          case 0: adcData.smartswitch4_current[0] = v; break;
-	          case 1: adcData.smartswitch4_current[1] = v; break;
-	          case 2: adcData.smartswitch4_voltage    = v; break;
-	          case 3: adcData.smartswitch4_temp       = v; break;
-	      }
-
-	      // smartswitch6 (4 channels via mux)
-	      v = (aADCy2ConvertedValues[1]);
-	      adcData.smartswitch6[mux] = v;
-
-
-	      /* ================= ADC5 ================= */
-
-	      adcData.analogSpare2 = (aADCSingleEndedAdc5[1]);
-	  }
+        case 3:
+            adcData.smartswitch1_temp = adcBuffer[4];
+            adcData.smartswitch2_temp = adcBuffer[5];
+            adcData.smartswitch4_temp = adcBuffer[6];
+            adcData.smartswitch5[3]   = adcBuffer[7];
+            adcData.smartswitch6[3]   = adcBuffer[8];
+            adcData.smartswitch3_temp = adcBuffer[10];
+            break;
+    }
+}
 
 
 
