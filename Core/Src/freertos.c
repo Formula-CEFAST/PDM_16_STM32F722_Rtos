@@ -166,14 +166,12 @@ void StartTask02(void *argument)
 {
   /* USER CODE BEGIN StartTask02 */
 	CAN_Manager_Init();
-	uint16_t valor=1520;
   /* Infinite loop */
   for(;;)
   {
-	  CANTaskApp(valor);
-	  valor++;
+	  CANTaskApp();
 
-    osDelay(100);
+    osDelay(20);
   }
   /* USER CODE END StartTask02 */
 }
