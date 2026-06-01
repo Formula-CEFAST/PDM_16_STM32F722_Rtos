@@ -13,6 +13,7 @@
 #include "cmsis_os.h"
 #include "task.h"
 
+
 // ========== ADC PROCESSED DATA STRUCT ==========
 
 typedef struct {
@@ -42,6 +43,8 @@ typedef struct {
 
     float analogSpare1;
     float analogSpare2;
+    float analogSpare4;
+        float analogSpare3;
     float sensorCurrent;
 
 } ADC_Data_t;

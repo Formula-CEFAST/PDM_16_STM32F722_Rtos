@@ -111,7 +111,6 @@ int main(void)
 
 HAL_Delay(1000);
 
-HAL_TIM_Base_Start(&htim8);
 
 
   /* USER CODE END 2 */
