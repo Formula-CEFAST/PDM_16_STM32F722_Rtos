@@ -7,7 +7,6 @@
 
 
 #include "can_manager.h"
-#include "adc_manager.h"
 // ===== External FDCAN handle from CubeMX =====
 
 extern CAN_HandleTypeDef hcan1;
@@ -46,59 +45,128 @@ void CAN_Manager_Init(void)
 }
 
 
+ void SendCanFrame(uint16_t id,
+                         uint16_t v1,
+                         uint16_t v2,
+                         uint16_t v3,
+                         uint16_t v4)
+{
+    txHeader.StdId = id;
+    txHeader.ExtId = 0;
+    txHeader.IDE = CAN_ID_STD;
+    txHeader.RTR = CAN_RTR_DATA;
+    txHeader.DLC = 8;
+    txHeader.TransmitGlobalTime = DISABLE;
 
+    txData[0] = (v1 >> 8) & 0xFF;
+    txData[1] = v1 & 0xFF;
+
+    txData[2] = (v2 >> 8) & 0xFF;
+    txData[3] = v2 & 0xFF;
+
+    txData[4] = (v3 >> 8) & 0xFF;
+    txData[5] = v3 & 0xFF;
+
+    txData[6] = (v4 >> 8) & 0xFF;
+    txData[7] = v4 & 0xFF;
+
+    if(HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0)
+    {
+        HAL_CAN_AddTxMessage(&hcan1,
+                             &txHeader,
+                             txData,
+                             &txMailBox);
+    }
+}
 
 
 
 // ================= CAN TASK =================
 
-void CANTaskApp(uint16_t valor)
+void CANTaskApp(void)
 {
-	if (hcan1.ErrorCode>0)
-	{
-	    HAL_CAN_AbortTxRequest(&hcan1, CAN_TX_MAILBOX0 |
-	                                  CAN_TX_MAILBOX1 |
-	                                  CAN_TX_MAILBOX2);
-	    hcan1.ErrorCode=0;
-	}
-	uint16_t corrente_bombaCombustivel =valor;
-		 uint16_t  corrente_bombaAgua = valor;
+    static uint8_t counter = 0;
+    static uint8_t slowFrame = 0;
 
-		 txHeader.StdId = 100;                  // ID CAN padrão (11 bits)
-		 txHeader.ExtId = 0;                    // Não usado em Standard ID
-		 txHeader.IDE = CAN_ID_STD;             // Standard ID
-		 txHeader.RTR = CAN_RTR_DATA;           // Data frame
-		 txHeader.DLC = 8;              // 8 bytes
-		 txHeader.TransmitGlobalTime = DISABLE; // Sem timestamp
+    if (hcan1.ErrorCode > 0)
+    {
+        HAL_CAN_AbortTxRequest(&hcan1,
+                               CAN_TX_MAILBOX0 |
+                               CAN_TX_MAILBOX1 |
+                               CAN_TX_MAILBOX2);
 
-		 txData[0] = corrente_bombaCombustivel >> 8;  // MSB
-		 txData[1] = corrente_bombaCombustivel & 0xFF; // LSB
+        hcan1.ErrorCode = 0;
+    }
 
-		 txData[2] = corrente_bombaAgua/256;
-		 txData[3] = corrente_bombaAgua%256;
+    // ID 100
+    SendCanFrame(100,
+                 adcData.smartswitch1_current[0],
+                 adcData.smartswitch2_current[0],
+                 adcData.smartswitch3_current[0],
+                 adcData.smartswitch4_current[0]);
 
-		 txData[4]=65000/256;
-		 txData[5]=65000%256;
+    // ID 101
+    SendCanFrame(101,
+                 adcData.smartswitch1_current[1],
+                 adcData.smartswitch2_current[1],
+                 adcData.smartswitch3_current[1],
+                 adcData.smartswitch4_current[1]);
 
-		 txData[6]=0;
-		 txData[7]=0;
-		 if(HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0)
-		 {
-		     HAL_CAN_AddTxMessage(&hcan1,
-		                          &txHeader,
-		                          txData,
-		                          &txMailBox);
-		 }
-		 else{
-			 HAL_CAN_AbortTxRequest(&hcan1, CAN_TX_MAILBOX0 |
-				                                  CAN_TX_MAILBOX1 |
-				                                  CAN_TX_MAILBOX2);
-			 HAL_CAN_AddTxMessage(&hcan1,
-			 		                          &txHeader,
-			 		                          txData,
-			 		                          &txMailBox);
+    counter++;
 
-		 }
+    if(counter >= 4)
+    {
+        counter = 0;
+
+        switch(slowFrame)
+        {
+            case 0:
+                SendCanFrame(102,
+                             adcData.smartswitch1_voltage,
+                             adcData.smartswitch2_voltage,
+                             adcData.smartswitch3_voltage,
+                             adcData.smartswitch4_voltage);
+                break;
+
+            case 1:
+                SendCanFrame(103,
+                             adcData.smartswitch1_temp,
+                             adcData.smartswitch2_temp,
+                             adcData.smartswitch3_temp,
+                             adcData.smartswitch4_temp);
+                break;
+
+            case 2:
+                SendCanFrame(104,
+                             adcData.smartswitch5[0],
+                             adcData.smartswitch5[1],
+                             adcData.smartswitch5[2],
+                             adcData.smartswitch5[3]);
+                break;
+
+            case 3:
+                SendCanFrame(105,
+                             adcData.smartswitch6[0],
+                             adcData.smartswitch6[1],
+                             adcData.smartswitch6[2],
+                             adcData.smartswitch6[3]);
+                break;
+
+            case 4:
+                SendCanFrame(106,
+                             adcData.sensorCurrent,
+                             adcData.vbat,
+                             adcData.vref,
+                             adcData.temperature);
+                break;
+        }
+
+        slowFrame++;
+        if(slowFrame > 4)
+        {
+            slowFrame = 0;
+        }
+    }
 }
 
 
