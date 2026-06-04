@@ -25,7 +25,7 @@ static Servo_CfgType servoCfg[MAX_SERVOS] =
         .minPulse = 500.0f,    // us (ou CCR mínimo)
         .maxPulse = 2500.0f,   // us (ou CCR máximo)
         .TIM_Handle = &htim2,    // será atribuído no init
-        .TIM_Channel = TIM_CHANNEL_1
+        .TIM_Channel = TIM_CHANNEL_3
 
     },
 
@@ -37,7 +37,7 @@ static Servo_CfgType servoCfg[MAX_SERVOS] =
         .minPulse = 500.0f,
         .maxPulse = 2500.0f,
         .TIM_Handle = &htim2,
-        .TIM_Channel = TIM_CHANNEL_2
+        .TIM_Channel = TIM_CHANNEL_4
 
     },
 
@@ -92,8 +92,11 @@ static uint32_t Servo_GetPulseForPercent(uint16_t indiceServo, uint8_t percent)
 
         uint32_t scaled_42 = (percent * 42u) / 100u; // 0..42
         //inverted pulse calculation
-        uint32_t pulse_width = servoCfg[indiceServo].maxPulse - (scaled_42 * (servoCfg[indiceServo].maxPulse- servoCfg[indiceServo].minPulse)) / 100u;
-        return pulse_width;}
+        uint32_t pulse_width = servoCfg[indiceServo].maxPulse - (scaled_42 * (servoCfg[indiceServo].maxPulse- servoCfg[indiceServo].minPulse)) / 100u;        __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,pulse_width);
+
+        return pulse_width;
+
+    }
 
     // Outros: Standard output linear curve
     return (uint32_t)(servoCfg[indiceServo].minPulse + percent * 10u);
@@ -117,7 +120,10 @@ void Servo_InitConfig(void)
             servoMoveTo(i);
       }
         else
-            escMoveTo(i);
+        	__HAL_TIM_SET_COMPARE(servoCfg[i].TIM_Handle,
+        			servoCfg[i].TIM_Channel,
+                    1000);
+            //escMoveTo(i);
     }
 }
 

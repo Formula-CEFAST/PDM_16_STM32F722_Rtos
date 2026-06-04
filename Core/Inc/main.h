@@ -59,8 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define PWM_4_Pin GPIO_PIN_10
 #define PWM_4_GPIO_Port GPIOB
-#define PWM_3_Pin GPIO_PIN_11
-#define PWM_3_GPIO_Port GPIOB
+#define Servo_1_Pin GPIO_PIN_11
+#define Servo_1_GPIO_Port GPIOB
 #define BUCK_2_Pin GPIO_PIN_12
 #define BUCK_2_GPIO_Port GPIOB
 #define AlwaysOn_Pin GPIO_PIN_13

@@ -136,6 +136,7 @@ void Outputs_Update(void)
     uint16_t teste1;
     if(PW>0){teste1=1;}
     else teste1=0;
+
     HAL_GPIO_WritePin(BUCK_2_GPIO_Port, BUCK_2_Pin, teste1);
 
     // -------- Output 3 : HighCurrent1 --------

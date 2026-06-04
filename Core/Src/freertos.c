@@ -85,6 +85,25 @@ void ServoTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
+/* Hook prototypes */
+void configureTimerForRunTimeStats(void);
+unsigned long getRunTimeCounterValue(void);
+
+/* USER CODE BEGIN 1 */
+/* Functions needed when configGENERATE_RUN_TIME_STATS is on */
+__weak void configureTimerForRunTimeStats(void)
+{
+ CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+ DWT->CTRL |= 1;
+ DWT->CYCCNT = 0;
+}
+
+__weak unsigned long getRunTimeCounterValue(void)
+{
+return DWT->CYCCNT;
+}
+/* USER CODE END 1 */
+
 /**
   * @brief  FreeRTOS initialization
   * @param  None
@@ -150,7 +169,7 @@ void StartDefaultTask(void *argument)
 	  Outputs_Update();
 
 	  HAL_GPIO_WritePin(Alternator_Relay_GPIO_Port, Alternator_Relay_Pin,genericPWMDuty[7]);
-    osDelay(20);
+    osDelay(10);
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -166,12 +185,13 @@ void StartTask02(void *argument)
 {
   /* USER CODE BEGIN StartTask02 */
 	CAN_Manager_Init();
+	osDelay(1000);
   /* Infinite loop */
   for(;;)
   {
 	  CANTaskApp();
 
-    osDelay(20);
+    osDelay(100);
   }
   /* USER CODE END StartTask02 */
 }
@@ -194,7 +214,7 @@ void ServoTask(void *argument)
 
 	  Servos_Update();
 
-    osDelay(20);
+    osDelay(10);
   }
   /* USER CODE END ServoTask */
 }

@@ -88,7 +88,7 @@ void CANTaskApp(void)
     static uint8_t counter = 0;
     static uint8_t slowFrame = 0;
 
-    if (hcan1.ErrorCode > 0)
+    if (txMailBox > 6)
     {
         HAL_CAN_AbortTxRequest(&hcan1,
                                CAN_TX_MAILBOX0 |
@@ -98,75 +98,19 @@ void CANTaskApp(void)
         hcan1.ErrorCode = 0;
     }
 
-    // ID 100
-    SendCanFrame(100,
-                 adcData.smartswitch1_current[0],
-                 adcData.smartswitch2_current[0],
-                 adcData.smartswitch3_current[0],
-                 adcData.smartswitch4_current[0]);
+
+  // osDelay(2);
+   SendCanFrame(101,
+                   adcData.smartswitch3_current[0],
+                   adcData.smartswitch4_current[0],
+				   	flagCan,
+                   adcData.smartswitch4_current[0]);
 
     // ID 101
-    SendCanFrame(101,
-                 adcData.smartswitch1_current[1],
-                 adcData.smartswitch2_current[1],
-                 adcData.smartswitch3_current[1],
-                 adcData.smartswitch4_current[1]);
 
-    counter++;
 
-    if(counter >= 4)
-    {
-        counter = 0;
 
-        switch(slowFrame)
-        {
-            case 0:
-                SendCanFrame(102,
-                             adcData.smartswitch1_voltage,
-                             adcData.smartswitch2_voltage,
-                             adcData.smartswitch3_voltage,
-                             adcData.smartswitch4_voltage);
-                break;
 
-            case 1:
-                SendCanFrame(103,
-                             adcData.smartswitch1_temp,
-                             adcData.smartswitch2_temp,
-                             adcData.smartswitch3_temp,
-                             adcData.smartswitch4_temp);
-                break;
-
-            case 2:
-                SendCanFrame(104,
-                             adcData.smartswitch5[0],
-                             adcData.smartswitch5[1],
-                             adcData.smartswitch5[2],
-                             adcData.smartswitch5[3]);
-                break;
-
-            case 3:
-                SendCanFrame(105,
-                             adcData.smartswitch6[0],
-                             adcData.smartswitch6[1],
-                             adcData.smartswitch6[2],
-                             adcData.smartswitch6[3]);
-                break;
-
-            case 4:
-                SendCanFrame(106,
-                             adcData.sensorCurrent,
-                             adcData.vbat,
-                             adcData.vref,
-                             adcData.temperature);
-                break;
-        }
-
-        slowFrame++;
-        if(slowFrame > 4)
-        {
-            slowFrame = 0;
-        }
-    }
 }
 
 
@@ -208,6 +152,14 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 		}
 
 	}
+	if(rxHeader.StdId==MEGACANID+3){
+
+		//
+		flagCan = (rxData[0] << 8) | rxData[1];
+
+
+	}
+
 
 	rxHeader.ExtId=0;
 
