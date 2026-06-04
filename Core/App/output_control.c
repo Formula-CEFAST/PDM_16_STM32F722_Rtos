@@ -8,9 +8,6 @@
 #include "tim.h"
 #include "app_data.h"
 #include "output_control.h"
-extern TIM_HandleTypeDef htim1;
-extern TIM_HandleTypeDef htim2;
-extern TIM_HandleTypeDef htim5;
 
 
 // ===== PWM LIMIT =====
@@ -26,17 +23,17 @@ extern TIM_HandleTypeDef htim5;
 void OutputManager_Init(void)
 {
 
-	//if activate crash the program
-	//HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+    for (uint8_t i = 0u; i < MAX_INDICE_DRIVERS; ++i)
+    {
+        if (!driver_CfgParam[i].output_enable)
+            continue;
 
-
-    HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_2);
-    HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+        if (driver_CfgParam[i].TIM_Handle != NULL)
+        {
+            HAL_TIM_PWM_Start(driver_CfgParam[i].TIM_Handle,
+                              driver_CfgParam[i].TIM_Channel);
+        }
+    }
 }
 static uint32_t DutyPercentToPwm(uint8_t duty_percent)
 {
@@ -61,7 +58,7 @@ static uint8_t RampPercent(uint8_t current, uint8_t target)
 
 static uint32_t GetCanSoftStartPwm(driver_CfgType *driver, uint8_t can_cmd)
 {
-    uint8_t target = can_cmd ? 9999u : 0u;
+    uint8_t target = can_cmd ? 100u : 0u;
     uint8_t duty_percent = target;
 
     if (target == 0u)
@@ -117,44 +114,36 @@ uint32_t GetDriverPWM(driver_CfgType *driver, uint32_t desired_pwm)
 void Outputs_Update(void)
 {
     uint32_t PW;
-    uint8_t State;
 
-    
-    // -------- Output 0 : MiddleCurrent2 (digital) --------
-    //Bomba dde combustivel trocar para outputPwm4(Generic Pwm Duty D)--BALA
-    PW = GetDriverPWM(&driver_CfgParam[0], GetOutputPWM(3));
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, PW);
+    for (uint8_t i = 0u; i < MAX_INDICE_DRIVERS; ++i)
+    {
+        if (!driver_CfgParam[i].output_enable)
+            continue;
 
-    // -------- Output 1 : MiddleCurrent1 --------
-    //OUTPUT 4 N TEM NADA AKI,SPARE TOTAL,NEM NO CHICOTE TEM ALGO
-    PW = GetDriverPWM(&driver_CfgParam[1], GetOutputPWM(3));
-    __HAL_TIM_SET_COMPARE(&htim12, TIM_CHANNEL_2, 0);
+        if (driver_CfgParam[i].force_zero)
+        {
+            PW = 0u;
+        }
+        else
+        {
+            PW = GetDriverPWM(&driver_CfgParam[i],
+                              GetOutputPWM(driver_CfgParam[i].generic_pwm_index));
+        }
 
-    // -------- Output 2 : Buck2 -------- BALA
-    PW = GetDriverPWM(&driver_CfgParam[2], GetOutputPWM(4));
-    __HAL_TIM_SET_COMPARE(&htim12, TIM_CHANNEL_1, PW);
-    uint16_t teste1;
-    if(PW>0){teste1=1;}
-    else teste1=0;
+        if (driver_CfgParam[i].TIM_Handle != NULL)
+        {
+            __HAL_TIM_SET_COMPARE(driver_CfgParam[i].TIM_Handle,
+                                  driver_CfgParam[i].TIM_Channel,
+                                  PW);
+        }
 
-    HAL_GPIO_WritePin(BUCK_2_GPIO_Port, BUCK_2_Pin, teste1);
-
-    // -------- Output 3 : HighCurrent1 --------
-
-    //Ventoinha PA bALA
-    PW = GetDriverPWM(&driver_CfgParam[3], GetOutputPWM(2));
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, PW);
-        
-    // -------- Output 4 : HighCurrent2 --------
-    //Bomba da agua generic pwm F
-
-    PW = GetDriverPWM(&driver_CfgParam[4], GetOutputPWM(5));
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, PW);
-
-    // -------- Output 5 : Buck1 --------
-    PW = GetDriverPWM(&driver_CfgParam[5], GetOutputPWM(7));
-   // __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_2, PW);
-  //  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, PW);
+        if (i == 2u)
+        {
+            HAL_GPIO_WritePin(BUCK_2_GPIO_Port,
+                              BUCK_2_Pin,
+                              (PW > 0u) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        }
+    }
 
 }
 // ================= OUTPUT TASK =================

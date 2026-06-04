@@ -36,6 +36,9 @@ typedef enum{
 typedef struct
 {
 	uint8_t indice_can_out;
+	uint8_t generic_pwm_index;
+	bool output_enable;
+	bool force_zero;
 	bool error_flag;
 	bool on;
 	bool soft_start;
