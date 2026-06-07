@@ -28,3 +28,5 @@ output_mode_t outputMode[8] = {    OUTPUT_MODE_GENERIC_PWM,
 uint8_t newAngle = 0;
 
 uint16_t tensaoBatMega = 0;
+uint16_t megacan13_raw = 0;
+float megacan13_bar = 0.0f;

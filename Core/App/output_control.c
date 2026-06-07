@@ -17,6 +17,10 @@
 #define OC_MARGIN_LOW    0.9f   // -10%
 #define PWM_RETRY_DUTY   (100 - 1)
 #define SOFTSTART_STEP_PERCENT 1u
+#define CAN_SOFTSTART_RAMP_MS 1000u
+
+static uint32_t canSoftStartStartTick[MAX_INDICE_DRIVERS] = {0u};
+static bool canSoftStartActive[MAX_INDICE_DRIVERS] = {false};
 
 // ================= INIT =================
 
@@ -34,6 +38,9 @@ void OutputManager_Init(void)
                               driver_CfgParam[i].TIM_Channel);
         }
     }
+    	Actuator_SelfCheck_Start(0);
+
+
 }
 static uint32_t DutyPercentToPwm(uint8_t duty_percent)
 {
@@ -56,22 +63,81 @@ static uint8_t RampPercent(uint8_t current, uint8_t target)
     return target;
 }
 
-static uint32_t GetCanSoftStartPwm(driver_CfgType *driver, uint8_t can_cmd)
+static uint8_t SelfCheckRampPercent(const driver_CfgType *driver)
 {
-    uint8_t target = can_cmd ? 100u : 0u;
-    uint8_t duty_percent = target;
+    uint8_t target = driver->self_check_drive_percent;
+    uint32_t ramp_ms_total = driver->self_check_ramp_ms;
 
     if (target == 0u)
+        return 0u;
+
+    if (ramp_ms_total == 0u)
+        return target;
+
+    uint32_t elapsed = xTaskGetTickCount() - driver->self_check_start_tick;
+    if (elapsed >= pdMS_TO_TICKS(ramp_ms_total))
+        return target;
+
+    uint32_t ramp_ms = elapsed * 1000u / configTICK_RATE_HZ;
+    uint32_t ramp_percent = (uint32_t)target * ramp_ms / ramp_ms_total;
+
+    if (ramp_percent > target)
+        ramp_percent = target;
+
+    return (uint8_t)ramp_percent;
+}
+
+static uint8_t CanSoftStartPercent(uint8_t ch, driver_CfgType *driver, uint8_t can_cmd)
+{
+    if (can_cmd == 0u)
     {
+        canSoftStartActive[ch] = false;
         driver->current_duty = 0u;
         return 0u;
     }
 
-    if (driver->soft_start)
-        duty_percent = RampPercent(driver->current_duty, target);
+    if (!driver->soft_start)
+    {
+        driver->current_duty = 100u;
+        canSoftStartActive[ch] = false;
+        return 100u;
+    }
 
-    driver->current_duty = duty_percent;
+    if (!canSoftStartActive[ch])
+    {
+        canSoftStartActive[ch] = true;
+        canSoftStartStartTick[ch] = xTaskGetTickCount();
+        driver->current_duty = 0u;
+    }
 
+    uint32_t elapsed_ticks = xTaskGetTickCount() - canSoftStartStartTick[ch];
+    uint32_t ramp_ticks = pdMS_TO_TICKS(CAN_SOFTSTART_RAMP_MS);
+
+    if (ramp_ticks == 0u)
+    {
+        driver->current_duty = 100u;
+        canSoftStartActive[ch] = false;
+        return 100u;
+    }
+
+    if (elapsed_ticks >= ramp_ticks)
+    {
+        driver->current_duty = 100u;
+        canSoftStartActive[ch] = false;
+        return 100u;
+    }
+
+    uint32_t percent = (100u * elapsed_ticks) / ramp_ticks;
+    if (percent > 100u)
+        percent = 100u;
+
+    driver->current_duty = (uint8_t)percent;
+    return (uint8_t)percent;
+}
+
+static uint32_t GetCanSoftStartPwm(driver_CfgType *driver, uint8_t can_cmd)
+{
+    uint8_t duty_percent = CanSoftStartPercent((uint8_t)(driver - driver_CfgParam), driver, can_cmd);
     return DutyPercentToPwm(duty_percent);
 }
 
@@ -120,7 +186,11 @@ void Outputs_Update(void)
         if (!driver_CfgParam[i].output_enable)
             continue;
 
-        if (driver_CfgParam[i].force_zero)
+        if (driver_CfgParam[i].self_check_running)
+        {
+            PW = DutyPercentToPwm(SelfCheckRampPercent(&driver_CfgParam[i]));
+        }
+        else if (driver_CfgParam[i].force_zero)
         {
             PW = 0u;
         }
@@ -145,6 +215,68 @@ void Outputs_Update(void)
         }
     }
 
+}
+
+bool Actuator_SelfCheck_Start(uint8_t idx)
+{
+    if (idx >= MAX_INDICE_DRIVERS)
+        return false;
+
+    driver_CfgType *drv = &driver_CfgParam[idx];
+
+    if (!drv->self_check_enabled)
+        return true;
+
+    drv->self_check_running = true;
+    drv->self_check_done = false;
+    drv->self_check_result = false;
+    drv->self_check_start_tick = xTaskGetTickCount();
+    drv->self_check_pressure_start = megacan13_bar;
+    drv->self_check_current_start = drv->current_sensor_value ? *drv->current_sensor_value : 0.0f;
+
+    return true;
+}
+
+void Actuator_SelfCheck_Service(void)
+{
+    for (uint8_t i = 0u; i < MAX_INDICE_DRIVERS; ++i)
+    {
+        driver_CfgType *drv = &driver_CfgParam[i];
+
+        if (!drv->self_check_running)
+            continue;
+
+        uint32_t elapsed = xTaskGetTickCount() - drv->self_check_start_tick;
+        uint32_t ramp_ticks = pdMS_TO_TICKS(drv->self_check_ramp_ms);
+        uint32_t hold_ticks = pdMS_TO_TICKS(drv->self_check_hold_ms);
+
+        if (elapsed < ramp_ticks)
+            continue;
+
+        if (elapsed < (ramp_ticks + hold_ticks))
+            continue;
+
+        float new_pressure = megacan13_bar;
+        float new_current = drv->current_sensor_value ? *drv->current_sensor_value : 0.0f;
+
+        bool pressure_ok = (new_pressure >= drv->self_check_pressure_threshold) &&
+                           ((new_pressure - drv->self_check_pressure_start) > 0.0f);
+
+        bool current_ok = true;
+        if (drv->self_check_current_threshold < 65535.0f)
+        {
+            current_ok = (new_current >= drv->self_check_current_threshold);
+        }
+
+        drv->self_check_result = pressure_ok && current_ok;
+        drv->self_check_done = true;
+        drv->self_check_running = false;
+
+        if (!drv->self_check_result)
+        {
+            drv->error_flag = true;
+        }
+    }
 }
 // ================= OUTPUT TASK =================
 
@@ -229,6 +361,7 @@ void RetryCheck(driver_CfgType *driver)
 }
 void OutputTask(void *argument)
 {
+    Actuator_SelfCheck_Service();
 	Outputs_Update();
 
 

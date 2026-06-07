@@ -166,8 +166,8 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  Outputs_Update();
-
+	  OutputTask(argument);
+	 // Actuator_SelfCheck(0);
 	  HAL_GPIO_WritePin(Alternator_Relay_GPIO_Port, Alternator_Relay_Pin,genericPWMDuty[7]);
     osDelay(10);
   }

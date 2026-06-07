@@ -39,29 +39,6 @@ void ADC_Manager_Start()
 
 
 }
-
-// ================= DMA CALLBACK =================
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
-{
-    // Signal ADC task when DMA completes a sequence
-   // osSemaphoreRelease(adcSemHandle);
-	ADC_ProcessData(muxState);
-	SetNextMuxState();
-
-}
-
-
-// ================= RAW TO VOLTAGE =================
-
-float ADC_RawToVoltage(uint16_t raw)
-{
-    return (3.3f * raw) / 4095.0f;   // 12-bit ADC
-}
-
-
-// ================= ADC PROCESSING TASK =================
-
 void SetNextMuxState(void)
 {
     muxState = (muxState + 1) % 4;
@@ -91,6 +68,29 @@ void SetNextMuxState(void)
 
     }
 }
+// ================= DMA CALLBACK =================
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    // Signal ADC task when DMA completes a sequence
+   // osSemaphoreRelease(adcSemHandle);
+	ADC_ProcessData(muxState);
+	SetNextMuxState();
+
+}
+
+
+// ================= RAW TO VOLTAGE =================
+
+float ADC_RawToVoltage(uint16_t raw)
+{
+    return (3.3f * raw) / 4095.0f;   // 12-bit ADC
+}
+
+
+// ================= ADC PROCESSING TASK =================
+
+
 
 
 

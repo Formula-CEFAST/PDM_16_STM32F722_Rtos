@@ -56,7 +56,22 @@ typedef struct
     // ---- software timers ----
     uint32_t overcurrent_tick;
     uint32_t retry_tick;
-}driver_CfgType;
+
+
+	// Self-check configuration
+	bool self_check_enabled;
+	bool self_check_running;
+	bool self_check_done;
+	bool self_check_result;
+	uint32_t self_check_start_tick;
+	float self_check_pressure_start;
+	float self_check_current_start;
+	uint8_t self_check_drive_percent; // percent to drive during self-check
+	uint16_t self_check_ramp_ms; // time to ramp from 0 to drive percent
+	uint16_t self_check_hold_ms; // time to hold at drive percent before evaluation
+	float self_check_pressure_threshold; // bar
+	float self_check_current_threshold; // if >= 65535 then ignore current check
+	}driver_CfgType;
 
 
 extern driver_CfgType driver_CfgParam[MAX_INDICE_DRIVERS];
