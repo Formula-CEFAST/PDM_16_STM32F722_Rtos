@@ -18,5 +18,7 @@ void OutputTask(void *argument);
 // Optional helpers
 void Outputs_Update(void);
 uint16_t GetOutputPWM(uint8_t ch);
+bool Actuator_SelfCheck_Start(uint8_t idx);
+void Actuator_SelfCheck_Service(void);
 
 #endif /* APP_OUTPUT_CONTROL_H_ */

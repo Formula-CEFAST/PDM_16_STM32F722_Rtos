@@ -68,6 +68,9 @@ extern uint16_t flagCan;
 
 // Other system values
 extern uint16_t tensaoBatMega;
+// MEGA CAN data
+extern uint16_t megacan13_raw;
+extern float megacan13_bar;
 
 
 

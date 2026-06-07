@@ -88,7 +88,7 @@ void CANTaskApp(void)
     static uint8_t counter = 0;
     static uint8_t slowFrame = 0;
 
-    if (txMailBox > 6)
+    if (txMailBox > 3)
     {
         HAL_CAN_AbortTxRequest(&hcan1,
                                CAN_TX_MAILBOX0 |
@@ -117,6 +117,14 @@ void CANTaskApp(void)
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 
 	HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rxHeader, rxData);
+
+	if (rxHeader.StdId == MEGACANID+13 && rxHeader.ExtId==0)
+	{
+		// pressure value in bytes 4 (high) and 5 (low), big-endian, raw -> divide by 10 to get bar
+		uint16_t raw = ((uint16_t)rxData[4] << 8) | (uint16_t)rxData[5];
+		megacan13_raw = raw;
+		megacan13_bar = ((float)raw) / 10.0f;
+	}
 
 	if (rxHeader.StdId == 1572 &&rxHeader.ExtId==0) {
 		for(int i=0;i<8;i++){
