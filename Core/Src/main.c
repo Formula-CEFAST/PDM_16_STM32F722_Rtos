@@ -109,8 +109,6 @@ int main(void)
   MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
 
-
-
   /* USER CODE END 2 */
 
   /* Init scheduler */

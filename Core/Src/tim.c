@@ -230,7 +230,7 @@ void MX_TIM8_Init(void)
   htim8.Instance = TIM8;
   htim8.Init.Prescaler = 64-1;
   htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim8.Init.Period = 10000-1;
+  htim8.Init.Period = 20000-1;
   htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim8.Init.RepetitionCounter = 0;
   htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -421,7 +421,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* timHandle)
     PB10     ------> TIM2_CH3
     PB11     ------> TIM2_CH4
     */
-    GPIO_InitStruct.Pin = PWM_4_Pin|Servo_1_Pin;
+    GPIO_InitStruct.Pin = Servo_2_Pin|Servo_1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -580,3 +580,4 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
+

@@ -22,8 +22,8 @@ static Servo_CfgType servoCfg[MAX_SERVOS] =
         .inicialAngle = 0,
         .maxAngle = 180.0f,
         .anguloIndice = 0,
-        .minPulse = 500.0f,    // us (ou CCR mínimo)
-        .maxPulse = 2500.0f,   // us (ou CCR máximo)
+        .minPulse = 600.0f,    // us (ou CCR mínimo)
+        .maxPulse = 2200.0f,   // us (ou CCR máximo)
         .TIM_Handle = &htim2,    // será atribuído no init
         .TIM_Channel = TIM_CHANNEL_3
 
@@ -34,8 +34,8 @@ static Servo_CfgType servoCfg[MAX_SERVOS] =
         .inicialAngle = 0,
         .maxAngle = 180.0f,
         .anguloIndice = 0,
-        .minPulse = 500.0f,
-        .maxPulse = 2500.0f,
+        .minPulse = 600.0f,
+        .maxPulse = 2200.0f,
         .TIM_Handle = &htim2,
         .TIM_Channel = TIM_CHANNEL_4
 
@@ -62,7 +62,7 @@ static Servo_CfgType servoCfg[MAX_SERVOS] =
 			    .minPulse = 1000.0f,
 			    .maxPulse = 2000.0f,
 			    .TIM_Handle = &htim4,
-			    .TIM_Channel = TIM_CHANNEL_1
+			    .TIM_Channel = TIM_CHANNEL_4
 
 			},
 			{
@@ -88,14 +88,13 @@ static uint32_t Servo_GetPulseForPercent(uint16_t indiceServo, uint8_t percent)
         percent = 100u;
 
     /* Primeiro dois servos: coletor invertido com escala 0..42 */
-    if(indiceServo < 2){
-
-        uint32_t scaled_42 = (percent * 42u) / 100u; // 0..42
-        //inverted pulse calculation
-        uint32_t pulse_width = servoCfg[indiceServo].maxPulse - (scaled_42 * (servoCfg[indiceServo].maxPulse- servoCfg[indiceServo].minPulse)) / 100u;        __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,pulse_width);
+    if (indiceServo < 2)
+    {
+    	uint32_t scaled = 5u + (percent * (55u - 10u)) / 100u; // 10..43
+        uint32_t pulse_width = servoCfg[indiceServo].maxPulse -
+            (scaled * (servoCfg[indiceServo].maxPulse - servoCfg[indiceServo].minPulse)) / 100u;
 
         return pulse_width;
-
     }
 
     // Outros: Standard output linear curve

@@ -160,8 +160,10 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
-	ADC_Manager_Start();
+	//ADC_Manager_Start();
 	OutputManager_Init();
+
+
 	//Servo_InitConfig();
   /* Infinite loop */
   for(;;)
@@ -189,7 +191,7 @@ void StartTask02(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  CANTaskApp();
+	 // CANTaskApp();
 
     osDelay(100);
   }
